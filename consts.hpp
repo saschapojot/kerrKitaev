@@ -7,14 +7,16 @@
 
 #include <boost/math/constants/constants.hpp>
 #include <vector>
-const int PI = boost::math::constants::pi<double>();
+#include <complex>
+
+
 
 class CONSTS {
 
 public:
     CONSTS(){
 
-        for(int i=0;i<this->N;i++){
+        for(int i=0;i<this->N+1;i++){
             kIndAll.push_back(i);
         }
         for(int i=0;i< this->N/2;i++){
@@ -24,14 +26,14 @@ public:
 public:
 
 
-    int N = 500;//fermion number
+    int N = 10;//fermion number
     double Nd = (double) N;//N in double, to facilitate floating point calculation
-    double dk = 2 * PI / Nd;
+    double dk = 2 * M_PI / Nd;
 
     /*
      * indices of momentum space
      * */
-    std::vector<int> kIndAll;
+    std::vector<int> kIndAll;//0,1,...,N, N+1 in total
     std::vector<int>kIndHalf;
 
 
@@ -44,7 +46,7 @@ public:
     /*
      * Parameters after the quench
      * */
-    double u1 = 0.5;
+    double mu1 = 0.5;
     double t1 = 1.0;
     double d1 = 1.0;
 
@@ -56,6 +58,11 @@ public:
     int Q=100;//large time step number
     double dt=0.01;//small time step
     double ds=(double)R*dt;//large time step
+
+
+    double tol=1e-16;
+
+
 
 
 };
