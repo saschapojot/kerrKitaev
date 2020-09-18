@@ -3,7 +3,10 @@
 //
 #include "solver.hpp"
 
-solver::solver() {
+solver::solver(const CONSTS& conTmp) {
+    //params
+    this->CON=conTmp;
+
     //init solutionsAll
     std::vector<Eigen::Vector2cd> vecs0(this->CON.Q*this->CON.R+1);
     for(const auto&k:this->CON.kIndAll) {
@@ -34,7 +37,7 @@ solver::solver() {
     }
 
     //init beta
-    std::vector<double> b0(this->CON.N,0.0);
+    std::vector<double> b0(this->CON.N-1,0.0);
     for(int q=0; q<this->CON.Q+1;q++){
         this->beta.push_back(b0);
     }
@@ -50,7 +53,7 @@ double solver::b0(const int &k) {
 }
 
 double solver::c0(const int &k) {
-    return -this->CON.t0 * std::cos((double) k * this->CON.dk)-this->CON.mu0/2.0;
+    return this->CON.t0 * std::cos((double) k * this->CON.dk)+this->CON.mu0/2.0;
 
 }
 
@@ -63,13 +66,13 @@ Eigen::Vector2cd solver::initVec(const int &k) {
     double b0Val = this->b0(k);
     double c0Val = this->c0(k);
 
-    double denom2 = 2 * b0Val * b0Val + 2 * c0Val * c0Val + 2 * c0Val * std::sqrt(b0Val * b0Val + c0Val * c0Val);
+    double denom2 = 2 * b0Val * b0Val + 2 * c0Val * c0Val - 2 * c0Val * std::sqrt(b0Val * b0Val + c0Val * c0Val);
     if (std::abs(denom2) >= this->CON.tol) {
         double denom = std::sqrt(denom2);
         std::complex<double> denomZ{denom, 0};
 
-        std::complex<double> numer1{0, -b0Val};
-        std::complex<double> numer2{c0Val + std::sqrt(c0Val * c0Val + b0Val * b0Val), 0};
+        std::complex<double> numer1{0, b0Val};
+        std::complex<double> numer2{c0Val - std::sqrt(c0Val * c0Val + b0Val * b0Val), 0};
         rst[0] = numer1 / denomZ;
         rst[1] = numer2 / denomZ;
         return rst;
@@ -92,7 +95,7 @@ Eigen::Vector2cd solver::initVec(const int &k) {
 /// \return Linear part of the Hamiltonian after quench
 Eigen::Matrix2cd solver::H0(const int &k) {
     Eigen::Matrix2cd rst;
-    std::complex<double> idc = 1.0 + 0.0 * 1j;
+    std::complex<double> idc = std::complex<double>(1,0);
 
     rst(0, 0) = (-this->CON.mu1 - this->CON.t1 * std::cos((double) k * this->CON.dk)) * idc;
 
@@ -181,14 +184,15 @@ void solver::writeAllVects() {
     do {
         std::vector<std::thread> thrdsAll;
         int numPtrTmp = numPtr;
-        for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N + 1; ki++) {
+        for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
             thrdsAll.emplace_back(&solver::calulateVec, this, ki);
             numPtr += 1;
         }
         for (auto &th:thrdsAll) {
             th.join();
         }
-    } while (numPtr < this->CON.N);
+    } while (numPtr < this->CON.N-1);
+
 }
 
 std::complex<double> solver::Jkab(const int &k, const int &a, const int &b) {
@@ -255,21 +259,21 @@ void solver::writeSimpTabOneEntry(const int &k, const int &a) {
 //
 //}
 void solver::writeSimpTabAllEntries() {
-    //k=0,1,...,N;
+    //k=0,1,...,N-1;
     //a=0,1,...,Q-1;
     for(int a=0;a<this->CON.Q;a++) {
         int numPtr = -1;
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N + 1; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
                 thrds.emplace_back(&solver::writeSimpTabOneEntry, this, ki, a);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N);
+        } while (numPtr < this->CON.N-1);
     }
 
 
@@ -326,19 +330,19 @@ void solver::writeThetaDTabAllEntries() {
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N + 1; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N ; ki++) {
                 thrds.emplace_back(&solver::writeThetaDTabOneEntry, this, ki, q);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N);
+        } while (numPtr < this->CON.N-1);
     }
 
 }
 void solver::writeThetaTotTabOneEntry(const int &k, const int &q) {
-    //k=0,1,...,N;
+    //k=0,1,...,N-1;
     //q=0,1,...,Q
     Eigen::Vector2cd vecqR=this->solutionsAll[k][q*this->CON.R];
     Eigen::Vector2cd vec0=this->solutionsAll[k][0];
@@ -367,21 +371,21 @@ void solver::writeThetaTotTabOneEntry(const int &k, const int &q) {
 //}
 
 void solver::writeThetaTotTabAllEntries() {
-    //k=0,1,...,N;
+    //k=0,1,...,N-1;
     //q=0,1,...,Q;
     for (int q = 0; q < this->CON.Q + 1; q++) {
         int numPtr = -1;
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N + 1; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
                 thrds.emplace_back(&solver::writeThetaTotTabOneEntry, this, ki, q);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N);
+        } while (numPtr < this->CON.N-1);
     }
 }
 
@@ -432,10 +436,11 @@ double solver::jumpDecision(const double &incr) {
 
 void solver::writeBetaOneEntry(const int &k, const int &q) {
     //q=0,1,...,Q;
-    //k=0,1,...,N-1;
+    //k=0,1,...,N-2;
     double incr=(this->thetaGTab[k+1][q]-this->thetaGTab[k][q]).real();
     double bVal=this->jumpDecision(incr);
     this->beta[q][k]=bVal;
+
 
 }
 //void solver::writeBetaAllEntries() {
@@ -456,9 +461,9 @@ void solver::writeBetaOneEntry(const int &k, const int &q) {
 //}
 void solver::writeBetaAllEntries() {
     //q=0,1,...,Q;
-    //k=0,1,...,N-1;
+    //k=0,1,...,N-2;
     for(int q=0;q<this->CON.Q+1;q++){
-        for(int k=0;k<this->CON.N;k++){
+        for(int k=0;k<this->CON.N-1;k++){
             this->writeBetaOneEntry(k,q);
 
 
@@ -482,12 +487,40 @@ void solver::writeW() {
 
 void solver::plotW() {
     //q=0,1,..,Q;
-    std::vector<double>Qtime;
-    for(int q=0;q<this->CON.Q+1;q++){
-        Qtime.push_back((double)q*this->CON.ds);
+    std::vector<double> Qtime;
+    for (int q = 0; q < this->CON.Q + 1; q++) {
+        Qtime.push_back((double) q * this->CON.ds);
     }
-    plt::plot(Qtime,this->W);
-    plt::save("wn.png");
+    plt::figure();
+    plt::plot(Qtime, this->W,{{"color","black"}});
+    plt::xlabel("time");
+    std::string titleStr = "$\\mu_{0}=$" + boost::lexical_cast<std::string>(this->CON.mu0)
+                           + ", $t_{0}=$" + boost::lexical_cast<std::string>(this->CON.t0)
+                           + ", $d_{0}$=" + boost::lexical_cast<std::string>(this->CON.d0)
+                           + ", $\\mu_{1}=$" + boost::lexical_cast<std::string>(this->CON.mu1)
+                           + ", $t_{1}=$" + boost::lexical_cast<std::string>(this->CON.t1)
+                           + ", $d_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
+                           + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd);
+
+    ;
+    plt::title(titleStr);
+
+
+
+    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/windingNum/wn";
+    std::string paramInOutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".png";
+
+
+    plt::save(paramInOutFileName);
+    plt::close();
+
 }
 
 void solver::runCalc() {

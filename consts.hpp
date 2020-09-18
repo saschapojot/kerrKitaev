@@ -16,32 +16,37 @@ class CONSTS {
 public:
     CONSTS() {
 
-        for (int i = 0; i < this->N + 1; i++) {
+        for (int i = 0; i < this->N; i++) {
             kIndAll.push_back(i);
         }
         /*for (int i = 0; i < this->N / 2; i++) {
             kIndHalf.push_back(i);
         }*/
+
+
+        int tmp1 = (int) std::thread::hardware_concurrency();
+        int tmp2 = 12;
+        this->threadNum = tmp1 > tmp2 ? tmp1 : tmp2;
     }
 
 public:
 
 
-    int N = 100;//fermion number
+    int N = 500;//fermion number
     double Nd = (double) N;//N in double, to facilitate floating point calculation
-    double dk = 2 * M_PI / Nd;
+    double dk = 2 * M_PI / (Nd-1);
 
     /*
      * indices of momentum space
      * */
-    std::vector<int> kIndAll;//0,1,...,N, N+1 in total
+    std::vector<int> kIndAll;//0,1,...,N-1, N in total
 // std::vector<int> kIndHalf;
 
 
     /*
      * Parameters before the quench
      * */
-    double mu0 = -1.2;
+    double mu0 = 0.0;
     double t0 = 1.0;
     double d0 = 1.0;
     /*
@@ -56,15 +61,16 @@ public:
      * consts for time*/
 
     int R = 20;//small time step number
+
     int Q = 500;//large time step number
-    double dt = 0.01;//small time step
+    double dt = 0.005;//small time step
     double ds = (double) R * dt;//large time step
 
 
     double tol = 1e-16;
-    double cutOff = 0.8;
+    double cutOff = 1.2;
 
-    int threadNum= std::thread::hardware_concurrency();
+    int threadNum;//= std::thread::hardware_concurrency();
 
 
 };
