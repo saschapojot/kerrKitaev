@@ -34,7 +34,7 @@ public:
 
     int N = 500;//fermion number
     double Nd = (double) N;//N in double, to facilitate floating point calculation
-    double dk = 2 * M_PI / (Nd-1);
+    double dk = 2 * M_PI / Nd;
 
     /*
      * indices of momentum space
@@ -46,7 +46,7 @@ public:
     /*
      * Parameters before the quench
      * */
-    double mu0 = 0.0;
+    double mu0 = -3;
     double t0 = 1.0;
     double d0 = 1.0;
     /*

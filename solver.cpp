@@ -80,11 +80,18 @@ Eigen::Vector2cd solver::initVec(const int &k) {
 
     }
     else {
-        std::complex<double> c0 = 1j;
 
-        rst[0] = 0.0 * c0;
-        rst[1] = 1.0 + 0.0 * c0;
-        return rst;
+        if (c0Val > 0) {
+            rst[0] = std::complex<double>(1, 0);
+            rst[1] = std::complex<double>(0, 0);
+            return rst;
+        } else {
+            rst[0]=std::complex<double>(0,0);
+            rst[1]=std::complex<double>(1,0);
+            return rst;
+
+        }
+
     }
 
 }
@@ -95,15 +102,16 @@ Eigen::Vector2cd solver::initVec(const int &k) {
 /// \return Linear part of the Hamiltonian after quench
 Eigen::Matrix2cd solver::H0(const int &k) {
     Eigen::Matrix2cd rst;
-    std::complex<double> idc = std::complex<double>(1,0);
 
-    rst(0, 0) = (-this->CON.mu1 - this->CON.t1 * std::cos((double) k * this->CON.dk)) * idc;
 
-    std::complex<double> tmp01{0, this->CON.d1 * std::sin(this->CON.dk * (double) k)};
-    rst(0, 1) = tmp01;
+    rst(0, 0) = std::complex<double>(-this->CON.mu1 - this->CON.t1 * std::cos((double) k * this->CON.dk), 0);
 
-    rst(1, 0) = std::conj(tmp01);
-    rst(1, 1) = (this->CON.t1 * std::cos((double) k * this->CON.dk)) * idc;
+    double tmp01 = this->CON.d1 * std::sin(this->CON.dk * (double) k);
+    //std::complex<double> tmp01{0, this->CON.d1 * std::sin(this->CON.dk * (double) k)};
+    rst(0, 1) = std::complex<double>(0, tmp01);
+
+    rst(1, 0) = std::complex<double>(0, -tmp01);
+    rst(1, 1) = std::complex<double>(this->CON.t1 * std::cos((double) k * this->CON.dk), 0);
 
     return rst;
 
@@ -154,7 +162,7 @@ void solver::calulateVec(const int &k) {
 
     this->solutionsAll[k][0]=veck0;
     //time step number: 0,1,...,Q*R-1
-    for (int m = 0; m < this->CON.Q * this->CON.R; m++) {
+    for (int m = 0; m < this->CON.Q* this->CON.R; m++) {
         auto vecCurr = this->solutionsAll[k][m];
         auto vecNext = this->S2(k, vecCurr);
         this->solutionsAll[k][m+1]=vecNext;
@@ -203,12 +211,13 @@ std::complex<double> solver::Jkab(const int &k, const int &a, const int &b) {
     std::complex<double> zk = vec[1];
 
     Eigen::Matrix2cd H1;
-    H1(0, 0) = -this->CON.mu1 - this->CON.t1 * std::cos(this->CON.dk * (double) k) +
-               this->CON.lmd * std::pow(std::abs(yk), 2);
-
-    H1(0, 1) = std::complex<double>(0, this->CON.d1 * std::sin(this->CON.dk * (double) k));
-    H1(1, 0) = std::conj(H1(0, 1));
-    H1(1, 1) = this->CON.t1 * std::cos(this->CON.dk * (double) k) + this->CON.lmd * std::pow(std::abs(zk), 2);
+    H1(0, 0) = std::complex<double>(-this->CON.mu1 - this->CON.t1 * std::cos(this->CON.dk * (double) k) +
+                                    this->CON.lmd * std::pow(std::abs(yk), 2), 0);
+    double tmp01 = this->CON.d1 * std::sin(this->CON.dk * (double) k);
+    H1(0, 1) = std::complex<double>(0, tmp01);
+    H1(1, 0) = std::complex<double>(0, -tmp01);
+    H1(1, 1) = std::complex<double>(
+            this->CON.t1 * std::cos(this->CON.dk * (double) k) + this->CON.lmd * std::pow(std::abs(zk), 2), 0);
 
     std::complex<double> rst;
     rst = vec.adjoint() * H1 * vec;
@@ -223,6 +232,8 @@ std::complex<double> solver::simpsonD(const int &k, const int &a) {
     //a=0,1,...,Q-1
     //integration over [ads, (a+1)ds]
     std::complex<double> evenSum, oddSum;
+    oddSum = 0;
+    evenSum = 0;
 
     //compute odd sums
     for (int b = 1; b < this->CON.R; b += 2) {
@@ -390,7 +401,7 @@ void solver::writeThetaTotTabAllEntries() {
 }
 
 void solver::writeThetaGTabOneEntry(const int &k, const int &q) {
-    //k=0,1,...,N;
+    //k=0,1,...,N-1;
     //q=0,1,...,Q;
     std::complex<double> diffTmp = this->thetaTotTab[k][q] - this->thetaDTab[k][q];
 
@@ -413,7 +424,7 @@ void solver::writeThetaGTabOneEntry(const int &k, const int &q) {
 //
 //}
 void solver::writeThetaGTabAllEntries() {
-    //k=0,1,...,N;
+    //k=0,1,...,N-1;
     //q=0,1,...,Q;
     for(const auto &k:this->CON.kIndAll){
         for(int q=0;q<this->CON.Q+1;q++){
@@ -475,7 +486,7 @@ void solver::writeW() {
     //q=0,1,...,Q;
     for (int q = 0; q < this->CON.Q + 1; q++) {
         double wTmp = 0.0;
-        for (int k = 0; k < this->CON.N / 2 ; k++) {
+        for (int k = 0; k < this->CON.N / 2-1 ; k++) {
             wTmp += this->beta[q][k];
         }
         wTmp /= 2 * M_PI;
