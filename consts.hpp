@@ -40,30 +40,30 @@ public:
      * indices of momentum space
      * */
     std::vector<int> kIndAll;//0,1,...,N-1, N in total
-// std::vector<int> kIndHalf;
+
 
 
     /*
      * Parameters before the quench
      * */
-    double mu0 = -3;
+    double mu0 = 0;
     double t0 = 1.0;
-    double d0 = 1.0;
+    double d0 = -1.0;
     /*
      * Parameters after the quench
      * */
-    double mu1 = mu0;
+    double mu1 = -6;
     double t1 = t0;
     double d1 = d0;
 
-    double lmd = 1;//nonlinearity strength
+    double lmd = 0;//nonlinearity strength
     /*
      * consts for time*/
 
-    int R = 20;//small time step number
+    int R = 40;//small time step number
 
-    int Q = 500;//large time step number
-    double dt = 0.005;//small time step
+    int Q = 5000;//large time step number
+    double dt = 0.0005;//small time step
     double ds = (double) R * dt;//large time step
 
 

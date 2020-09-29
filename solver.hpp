@@ -61,7 +61,17 @@ public:
     //7th
     void plotW();
 
+    //8th
+    double xi(const int &k, const int &q);
+    //9th
+   void writel(const int&q);
+    //10th
+    void writeRateFuncs();
+
+    //11th
+    void plotRateFunction();
     void runCalc();
+
 
 
 
@@ -85,6 +95,7 @@ public:
    std::vector<std::vector<double>> beta;//q=0,1,...,Q;k=0,1,...,N-2;
 
    std::vector<double>W;//q=0,1,...,Q;
+   std::vector<double> rateFunction;//q=0,1,...,Q
 
 };
 

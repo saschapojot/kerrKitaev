@@ -5,11 +5,11 @@
 
 solver::solver(const CONSTS& conTmp) {
     //params
-    this->CON=conTmp;
+    this->CON = conTmp;
 
     //init solutionsAll
-    std::vector<Eigen::Vector2cd> vecs0(this->CON.Q*this->CON.R+1);
-    for(const auto&k:this->CON.kIndAll) {
+    std::vector<Eigen::Vector2cd> vecs0(this->CON.Q * this->CON.R + 1);
+    for (const auto &k:this->CON.kIndAll) {
         this->solutionsAll.push_back(vecs0);
     }
     //init simpTab
@@ -25,25 +25,28 @@ solver::solver(const CONSTS& conTmp) {
     }
 
     //init thetaTotTab
-    std::vector<std::complex<double>> v2(this->CON.Q+1, std::complex<double>(0,0));
-    for(const auto&k:this->CON.kIndAll){
+    std::vector<std::complex<double>> v2(this->CON.Q + 1, std::complex<double>(0, 0));
+    for (const auto &k:this->CON.kIndAll) {
         this->thetaTotTab.push_back(v2);
     }
 
     //init thetaGTab
-    std::vector<std::complex<double>>v3(this->CON.Q+1,std::complex<double>(0,0));
-    for(const auto&k:this->CON.kIndAll){
+    std::vector<std::complex<double>> v3(this->CON.Q + 1, std::complex<double>(0, 0));
+    for (const auto &k:this->CON.kIndAll) {
         this->thetaGTab.push_back(v3);
     }
 
     //init beta
-    std::vector<double> b0(this->CON.N-1,0.0);
-    for(int q=0; q<this->CON.Q+1;q++){
+    std::vector<double> b0(this->CON.N - 1, 0.0);
+    for (int q = 0; q < this->CON.Q + 1; q++) {
         this->beta.push_back(b0);
     }
 
     //init W
-    this->W=std::vector<double>(this->CON.Q+1,0.0);
+    this->W = std::vector<double>(this->CON.Q + 1, 0.0);
+
+    //init rateFunction
+    this->rateFunction = std::vector<double>(this->CON.Q + 1, 0.0);
 
 
 }
@@ -504,13 +507,25 @@ void solver::plotW() {
     }
     plt::figure();
     plt::plot(Qtime, this->W,{{"color","black"}});
+
+    double maxW=*std::max_element(this->W.begin(),this->W.end());
+    double minW=*std::min_element(this->W.begin(),this->W.end());
+    std::vector<int>wticks;
+    for(int i=std::floor(minW);i<std::ceil(maxW);i++){
+        wticks.push_back(i);
+    }
+    if(maxW-minW>1) {
+        plt::yticks(wticks);
+    }
+
     plt::xlabel("time");
+    plt::ylabel("Winding number");
     std::string titleStr = "$\\mu_{0}=$" + boost::lexical_cast<std::string>(this->CON.mu0)
                            + ", $t_{0}=$" + boost::lexical_cast<std::string>(this->CON.t0)
-                           + ", $d_{0}$=" + boost::lexical_cast<std::string>(this->CON.d0)
+                           + ", $\\Delta_{0}$=" + boost::lexical_cast<std::string>(this->CON.d0)
                            + ", $\\mu_{1}=$" + boost::lexical_cast<std::string>(this->CON.mu1)
                            + ", $t_{1}=$" + boost::lexical_cast<std::string>(this->CON.t1)
-                           + ", $d_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
+                           + ", $\\Delta_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
                            + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd);
 
     ;
@@ -518,7 +533,7 @@ void solver::plotW() {
 
 
 
-    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/windingNum/wn";
+    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/benchmark/wn";
     std::string paramInOutFileName =
             outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
             + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
@@ -533,7 +548,84 @@ void solver::plotW() {
     plt::close();
 
 }
+double solver::xi(const int &k, const int &q) {
+    //k=0,1,...,N-1
+    //q=0,1,2,...,Q
+    Eigen::Vector2cd vec0 = this->solutionsAll[k][0];
+    Eigen::Vector2cd vecqR = this->solutionsAll[k][q * this->CON.R];
+    std::complex<double> Lkq = vec0.adjoint() * vecqR;
+    return std::log(std::pow(std::abs(Lkq), 2));
 
+
+}
+void solver::writel(const int &q) {
+
+    double rst = 0;
+    double sumOdd = 0, sumEven = 0;
+    for (int k = 1; k < (int) (this->CON.Nd / 2.0) - 1; k += 2) {
+        sumOdd += this->xi(k, q);
+    }
+    for (int k = 2; k < (int) (this->CON.Nd / 2.0) - 1; k += 2) {
+        sumEven += this->xi(k, q);
+    }
+    rst = this->xi(0, q) + 4 * sumOdd + 2 * sumEven + this->xi((int) (this->CON.Nd / 2.0) - 1, q);
+    rst *= -2.0 / (3.0 * (this->CON.Nd - 1));
+    this->rateFunction[q] = rst;
+
+}
+void solver::writeRateFuncs() {
+    int numPtr = -1;
+    do {
+        std::vector<std::thread> thrdsAll;
+        int numPtrCurr = numPtr;
+        for (int qi = numPtrCurr + 1; qi < numPtrCurr + this->CON.threadNum + 1 && qi < this->CON.Q + 1; qi++) {
+            thrdsAll.emplace_back(&solver::writel, this, qi);
+            numPtr += 1;
+        }
+        for (auto &th:thrdsAll) {
+            th.join();
+        }
+    } while (numPtr < this->CON.Q);
+
+}
+void solver::plotRateFunction() {
+    this->writeRateFuncs();
+    //q=0,1,..,Q;
+    std::vector<double> Qtime;
+    for (int q = 0; q < this->CON.Q + 1; q++) {
+        Qtime.push_back((double) q * this->CON.ds);
+    }
+    plt::figure();
+    plt::plot(Qtime, this->rateFunction, {{"color", "black"}});
+    plt::xlabel("time");
+    plt::ylabel("Rate function");
+    std::string titleStr = "$\\mu_{0}=$" + boost::lexical_cast<std::string>(this->CON.mu0)
+                           + ", $t_{0}=$" + boost::lexical_cast<std::string>(this->CON.t0)
+                           + ", $\\Delta_{0}$=" + boost::lexical_cast<std::string>(this->CON.d0)
+                           + ", $\\mu_{1}=$" + boost::lexical_cast<std::string>(this->CON.mu1)
+                           + ", $t_{1}=$" + boost::lexical_cast<std::string>(this->CON.t1)
+                           + ", $\\Delta_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
+                           + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd);
+
+    ;
+    plt::title(titleStr);
+
+    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/benchmark/ret";
+    std::string paramInOutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".png";
+
+
+    plt::save(paramInOutFileName);
+    plt::close();
+
+
+}
 void solver::runCalc() {
     //0th
     this->writeAllVects();
@@ -551,6 +643,8 @@ void solver::runCalc() {
     this->writeW();
     //7th
     this->plotW();
+    //11th
+    this->plotRateFunction();
 
 
 }
