@@ -9,7 +9,7 @@
 #include <vector>
 #include <complex>
 #include <thread>
-
+#include <string>
 
 class CONSTS {
 
@@ -46,7 +46,7 @@ public:
     /*
      * Parameters before the quench
      * */
-    double mu0 = 0;
+    double mu0 = -6;
     double t0 = 1.0;
     double d0 = -1.0;
     /*
@@ -60,10 +60,10 @@ public:
     /*
      * consts for time*/
 
-    int R = 40;//small time step number
+    int R = 160;//small time step number
 
-    int Q = 5000;//large time step number
-    double dt = 0.0005;//small time step
+    int Q = 1000;//large time step number
+    double dt = 0.00025;//small time step
     double ds = (double) R * dt;//large time step
 
 
@@ -72,6 +72,7 @@ public:
 
     int threadNum;//= std::thread::hardware_concurrency();
 
+    std::string dir="/home/disk2/Documents/cppCode/kerrKitaev/twoTrivial2/";
 
 };
 

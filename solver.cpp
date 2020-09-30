@@ -121,9 +121,9 @@ Eigen::Matrix2cd solver::H0(const int &k) {
 
 }
 
-Eigen::Matrix2cd solver::expH0(const int &k) {
+Eigen::Matrix2cd solver::expH0(const int &k,const double&stept) {
     Eigen::Matrix2cd h0Val = this->H0(k);
-    Eigen::Matrix2cd z0 = -1.0j * this->CON.dt / 2.0 * h0Val;
+    Eigen::Matrix2cd z0 = -1.0j * stept / 2.0 * h0Val;
     return z0.exp();
 
 }
@@ -132,19 +132,19 @@ Eigen::Matrix2cd solver::expH0(const int &k) {
 /// \param k
 /// \param vecStart
 /// \return state vector after 1 step of 2nd order Strang splitting S2
-Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart) {
+Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart,const double&stept) {
 //step 1
-    Eigen::Matrix2cd exph0Val = this->expH0(k);
+    Eigen::Matrix2cd exph0Val = this->expH0(k,stept);
     Eigen::Vector2cd vec1 = exph0Val * vecStart;
 
 //step 2
     std::complex<double> vkm = vec1[0];
     std::complex<double> wkm = vec1[1];
     //calculate etakm
-    std::complex<double> tmp1 = -1.0j * this->CON.lmd * std::pow(std::abs(vkm), 2) * this->CON.dt;
+    std::complex<double> tmp1 = -1.0j * this->CON.lmd * std::pow(std::abs(vkm), 2) *stept;
     std::complex<double> etakm = vkm * std::exp(tmp1);
     // calculate zetakm
-    std::complex<double> tmp2 = -1.0j * this->CON.lmd * std::pow(std::abs(wkm), 2) * this->CON.dt;
+    std::complex<double> tmp2 = -1.0j * this->CON.lmd * std::pow(std::abs(wkm), 2) * stept;
     std::complex<double> zetakm = wkm * std::exp(tmp2);
 
     //step 3
@@ -153,6 +153,16 @@ Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart) {
     return exph0Val * vec2;
 
 
+}
+//4th order Strang splitting
+Eigen::Vector2cd solver::S4(const int &k, const Eigen::Vector2cd &vecStart,const double&stept) {
+    double tmp=std::pow(2,1.0/3.0);
+    double w1=1.0/(2.0-tmp);
+    double w2=-tmp/(2-tmp);
+    Eigen::Vector2cd vec1=this->S2(k,vecStart,w1*stept);
+    Eigen::Vector2cd vec2=this->S2(k,vec1,w2*stept);
+    Eigen::Vector2cd vec3=this->S2(k,vec2,w1*stept);
+    return vec3;
 }
 
 /// calculate the state vectors starting with the kth momentum
@@ -167,7 +177,10 @@ void solver::calulateVec(const int &k) {
     //time step number: 0,1,...,Q*R-1
     for (int m = 0; m < this->CON.Q* this->CON.R; m++) {
         auto vecCurr = this->solutionsAll[k][m];
-        auto vecNext = this->S2(k, vecCurr);
+        //Use 2nd order
+       // auto vecNext = this->S2(k, vecCurr,this->CON.dt);
+        //use 4th order
+        auto vecNext=this->S4(k,vecCurr,this->CON.dt);
         this->solutionsAll[k][m+1]=vecNext;
 
         //solutionAll[k] has Q*R vectors
@@ -533,7 +546,7 @@ void solver::plotW() {
 
 
 
-    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/benchmark/wn";
+    std::string outFileName = this->CON.dir+"wn";
     std::string paramInOutFileName =
             outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
             + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
@@ -610,7 +623,7 @@ void solver::plotRateFunction() {
     ;
     plt::title(titleStr);
 
-    std::string outFileName = "/home/disk2/Documents/cppCode/kerrKitaev/benchmark/ret";
+    std::string outFileName = this->CON.dir+"ret";
     std::string paramInOutFileName =
             outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
             + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
@@ -625,6 +638,32 @@ void solver::plotRateFunction() {
     plt::close();
 
 
+}
+void solver::maxW() {
+    double tmp = 0;
+    size_t numElem = this->W.size();
+    for (size_t i = 0; i < numElem - 1; i++) {
+        double diffCurr = std::abs(this->W[i + 1] - this->W[i]);
+        if (diffCurr > tmp) {
+            tmp = diffCurr;
+        }
+    }
+    std::string outFileName = this->CON.dir + "summary";
+    std::string summaryOutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".txt";
+
+
+    std::ofstream ofPtr;
+    ofPtr.open(summaryOutFileName);
+    ofPtr << "Maximum of diff W is " << tmp << std::endl;
+    ofPtr<<"time step is "<<this->CON.dt<<std::endl;
+    ofPtr.close();
 }
 void solver::runCalc() {
     //0th
@@ -645,6 +684,9 @@ void solver::runCalc() {
     this->plotW();
     //11th
     this->plotRateFunction();
+    //12th
+    this->maxW();
+
 
 
 }

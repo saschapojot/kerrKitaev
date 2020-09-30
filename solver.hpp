@@ -10,7 +10,7 @@
 #include <map>
 #include "consts.hpp"
 #include <complex>
-#include <string>
+#include <fstream>
 #include <cmath>
 #include <utility>
 #include "matplotlib-cpp/matplotlibcpp.h"
@@ -31,8 +31,9 @@ public:
 
 
     Eigen::Matrix2cd H0(const int& k);//linear part of the Hamiltonian
-    Eigen::Matrix2cd expH0(const int &k);//exponentiates the H0 matrix in S2
-    Eigen::Vector2cd S2(const int& k, const Eigen::Vector2cd& vecStart);//one step S2
+    Eigen::Matrix2cd expH0(const int &k,const double&stept);//exponentiates the H0 matrix in S2
+    Eigen::Vector2cd S2(const int& k, const Eigen::Vector2cd& vecStart, const double &stept);//one step S2
+    Eigen::Vector2cd S4(const int&k, const Eigen::Vector2cd&vecStart, const double &stept);//one step S4
     void calulateVec(const int &k);// calculate the state vectors starting with the kth momentum.
    //0th
     void writeAllVects();//calculate all states with multithreading
@@ -70,6 +71,8 @@ public:
 
     //11th
     void plotRateFunction();
+    //12th
+    void maxW();
     void runCalc();
 
 
