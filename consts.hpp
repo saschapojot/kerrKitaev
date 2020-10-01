@@ -46,13 +46,13 @@ public:
     /*
      * Parameters before the quench
      * */
-    double mu0 = -6;
+    double mu0 = 3;
     double t0 = 1.0;
     double d0 = -1.0;
     /*
      * Parameters after the quench
      * */
-    double mu1 = -6;
+    double mu1 = 4;
     double t1 = t0;
     double d1 = d0;
 
@@ -62,8 +62,8 @@ public:
 
     int R = 160;//small time step number
 
-    int Q = 1000;//large time step number
-    double dt = 0.00025;//small time step
+    int Q = 3000;//large time step number
+    double dt = 0.0002;//small time step
     double ds = (double) R * dt;//large time step
 
 
@@ -72,7 +72,7 @@ public:
 
     int threadNum;//= std::thread::hardware_concurrency();
 
-    std::string dir="/home/disk2/Documents/cppCode/kerrKitaev/twoTrivial2/";
+    std::string dir="/home/disk2/Documents/cppCode/kerrKitaev/quench32/";
 
 };
 

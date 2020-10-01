@@ -85,7 +85,7 @@ Eigen::Vector2cd solver::initVec(const int &k) {
     else {
 
         if (c0Val > 0) {
-            rst[0] = std::complex<double>(1, 0);
+            rst[0] = std::complex<double>(0, 1);
             rst[1] = std::complex<double>(0, 0);
             return rst;
         } else {
@@ -178,9 +178,9 @@ void solver::calulateVec(const int &k) {
     for (int m = 0; m < this->CON.Q* this->CON.R; m++) {
         auto vecCurr = this->solutionsAll[k][m];
         //Use 2nd order
-       // auto vecNext = this->S2(k, vecCurr,this->CON.dt);
+        auto vecNext = this->S2(k, vecCurr,this->CON.dt);
         //use 4th order
-        auto vecNext=this->S4(k,vecCurr,this->CON.dt);
+       // auto vecNext=this->S4(k,vecCurr,this->CON.dt);
         this->solutionsAll[k][m+1]=vecNext;
 
         //solutionAll[k] has Q*R vectors
