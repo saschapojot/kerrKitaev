@@ -3,7 +3,7 @@
 //
 #include "solver.hpp"
 
-solver::solver(const CONSTS& conTmp) {
+solver::solver(const CONSTS &conTmp) {
     //params
     this->CON = conTmp;
 
@@ -56,7 +56,7 @@ double solver::b0(const int &k) {
 }
 
 double solver::c0(const int &k) {
-    return this->CON.t0 * std::cos((double) k * this->CON.dk)+this->CON.mu0/2.0;
+    return this->CON.t0 * std::cos((double) k * this->CON.dk) + this->CON.mu0 / 2.0;
 
 }
 
@@ -81,16 +81,15 @@ Eigen::Vector2cd solver::initVec(const int &k) {
         return rst;
 
 
-    }
-    else {
+    } else {
 
         if (c0Val > 0) {
             rst[0] = std::complex<double>(0, 1);
             rst[1] = std::complex<double>(0, 0);
             return rst;
         } else {
-            rst[0]=std::complex<double>(0,0);
-            rst[1]=std::complex<double>(1,0);
+            rst[0] = std::complex<double>(0, 0);
+            rst[1] = std::complex<double>(1, 0);
             return rst;
 
         }
@@ -121,7 +120,7 @@ Eigen::Matrix2cd solver::H0(const int &k) {
 
 }
 
-Eigen::Matrix2cd solver::expH0(const int &k,const double&stept) {
+Eigen::Matrix2cd solver::expH0(const int &k, const double &stept) {
     Eigen::Matrix2cd h0Val = this->H0(k);
     Eigen::Matrix2cd z0 = -1.0j * stept / 2.0 * h0Val;
     return z0.exp();
@@ -132,16 +131,16 @@ Eigen::Matrix2cd solver::expH0(const int &k,const double&stept) {
 /// \param k
 /// \param vecStart
 /// \return state vector after 1 step of 2nd order Strang splitting S2
-Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart,const double&stept) {
+Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart, const double &stept) {
 //step 1
-    Eigen::Matrix2cd exph0Val = this->expH0(k,stept);
+    Eigen::Matrix2cd exph0Val = this->expH0(k, stept);
     Eigen::Vector2cd vec1 = exph0Val * vecStart;
 
 //step 2
     std::complex<double> vkm = vec1[0];
     std::complex<double> wkm = vec1[1];
     //calculate etakm
-    std::complex<double> tmp1 = -1.0j * this->CON.lmd * std::pow(std::abs(vkm), 2) *stept;
+    std::complex<double> tmp1 = -1.0j * this->CON.lmd * std::pow(std::abs(vkm), 2) * stept;
     std::complex<double> etakm = vkm * std::exp(tmp1);
     // calculate zetakm
     std::complex<double> tmp2 = -1.0j * this->CON.lmd * std::pow(std::abs(wkm), 2) * stept;
@@ -154,14 +153,15 @@ Eigen::Vector2cd solver::S2(const int &k, const Eigen::Vector2cd &vecStart,const
 
 
 }
+
 //4th order Strang splitting
-Eigen::Vector2cd solver::S4(const int &k, const Eigen::Vector2cd &vecStart,const double&stept) {
-    double tmp=std::pow(2,1.0/3.0);
-    double w1=1.0/(2.0-tmp);
-    double w2=-tmp/(2-tmp);
-    Eigen::Vector2cd vec1=this->S2(k,vecStart,w1*stept);
-    Eigen::Vector2cd vec2=this->S2(k,vec1,w2*stept);
-    Eigen::Vector2cd vec3=this->S2(k,vec2,w1*stept);
+Eigen::Vector2cd solver::S4(const int &k, const Eigen::Vector2cd &vecStart, const double &stept) {
+    double tmp = std::pow(2, 1.0 / 3.0);
+    double w1 = 1.0 / (2.0 - tmp);
+    double w2 = -tmp / (2 - tmp);
+    Eigen::Vector2cd vec1 = this->S2(k, vecStart, w1 * stept);
+    Eigen::Vector2cd vec2 = this->S2(k, vec1, w2 * stept);
+    Eigen::Vector2cd vec3 = this->S2(k, vec2, w1 * stept);
     return vec3;
 }
 
@@ -173,15 +173,15 @@ void solver::calulateVec(const int &k) {
     //initialization
     Eigen::Vector2cd veck0 = this->initVec(k);
 
-    this->solutionsAll[k][0]=veck0;
+    this->solutionsAll[k][0] = veck0;
     //time step number: 0,1,...,Q*R-1
-    for (int m = 0; m < this->CON.Q* this->CON.R; m++) {
+    for (int m = 0; m < this->CON.Q * this->CON.R; m++) {
         auto vecCurr = this->solutionsAll[k][m];
         //Use 2nd order
-        auto vecNext = this->S2(k, vecCurr,this->CON.dt);
+        auto vecNext = this->S2(k, vecCurr, this->CON.dt);
         //use 4th order
-       // auto vecNext=this->S4(k,vecCurr,this->CON.dt);
-        this->solutionsAll[k][m+1]=vecNext;
+        // auto vecNext=this->S4(k,vecCurr,this->CON.dt);
+        this->solutionsAll[k][m + 1] = vecNext;
 
         //solutionAll[k] has Q*R vectors
 
@@ -215,7 +215,7 @@ void solver::writeAllVects() {
         for (auto &th:thrdsAll) {
             th.join();
         }
-    } while (numPtr < this->CON.N-1);
+    } while (numPtr < this->CON.N - 1);
 
 }
 
@@ -288,7 +288,7 @@ void solver::writeSimpTabOneEntry(const int &k, const int &a) {
 void solver::writeSimpTabAllEntries() {
     //k=0,1,...,N-1;
     //a=0,1,...,Q-1;
-    for(int a=0;a<this->CON.Q;a++) {
+    for (int a = 0; a < this->CON.Q; a++) {
         int numPtr = -1;
         do {
             std::vector<std::thread> thrds;
@@ -300,13 +300,12 @@ void solver::writeSimpTabAllEntries() {
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N-1);
+        } while (numPtr < this->CON.N - 1);
     }
 
 
-
-
 }
+
 void solver::writeThetaDTabOneEntry(const int &k, const int &q) {
     //q=1,2,...,Q
     std::complex<double> sumSimpTabTmp{0, 0};
@@ -357,27 +356,28 @@ void solver::writeThetaDTabAllEntries() {
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N ; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
                 thrds.emplace_back(&solver::writeThetaDTabOneEntry, this, ki, q);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N-1);
+        } while (numPtr < this->CON.N - 1);
     }
 
 }
+
 void solver::writeThetaTotTabOneEntry(const int &k, const int &q) {
     //k=0,1,...,N-1;
     //q=0,1,...,Q
-    Eigen::Vector2cd vecqR=this->solutionsAll[k][q*this->CON.R];
-    Eigen::Vector2cd vec0=this->solutionsAll[k][0];
+    Eigen::Vector2cd vecqR = this->solutionsAll[k][q * this->CON.R];
+    Eigen::Vector2cd vec0 = this->solutionsAll[k][0];
 
-    std::complex<double> tmp=vec0.adjoint()*vecqR;
+    std::complex<double> tmp = vec0.adjoint() * vecqR;
 
-   std::complex<double> rst=std::complex<double>(0,-1)*std::log(tmp/std::abs(tmp));
-   this->thetaTotTab[k][q]=rst;
+    std::complex<double> rst = std::complex<double>(0, -1) * std::log(tmp / std::abs(tmp));
+    this->thetaTotTab[k][q] = rst;
 
 
 }
@@ -412,7 +412,7 @@ void solver::writeThetaTotTabAllEntries() {
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N-1);
+        } while (numPtr < this->CON.N - 1);
     }
 }
 
@@ -442,13 +442,14 @@ void solver::writeThetaGTabOneEntry(const int &k, const int &q) {
 void solver::writeThetaGTabAllEntries() {
     //k=0,1,...,N-1;
     //q=0,1,...,Q;
-    for(const auto &k:this->CON.kIndAll){
-        for(int q=0;q<this->CON.Q+1;q++){
-            this->writeThetaGTabOneEntry(k,q);
+    for (const auto &k:this->CON.kIndAll) {
+        for (int q = 0; q < this->CON.Q + 1; q++) {
+            this->writeThetaGTabOneEntry(k, q);
 
         }
     }
 }
+
 double solver::jumpDecision(const double &incr) {
     double tmp = incr / M_PI;
 
@@ -464,12 +465,13 @@ double solver::jumpDecision(const double &incr) {
 void solver::writeBetaOneEntry(const int &k, const int &q) {
     //q=0,1,...,Q;
     //k=0,1,...,N-2;
-    double incr=(this->thetaGTab[k+1][q]-this->thetaGTab[k][q]).real();
-    double bVal=this->jumpDecision(incr);
-    this->beta[q][k]=bVal;
+    double incr = (this->thetaGTab[k + 1][q] - this->thetaGTab[k][q]).real();
+    double bVal = this->jumpDecision(incr);
+    this->beta[q][k] = bVal;
 
 
 }
+
 //void solver::writeBetaAllEntries() {
 //    //q=0,1,...,Q;
 //    //k=0,1,...,N-1;
@@ -489,20 +491,21 @@ void solver::writeBetaOneEntry(const int &k, const int &q) {
 void solver::writeBetaAllEntries() {
     //q=0,1,...,Q;
     //k=0,1,...,N-2;
-    for(int q=0;q<this->CON.Q+1;q++){
-        for(int k=0;k<this->CON.N-1;k++){
-            this->writeBetaOneEntry(k,q);
+    for (int q = 0; q < this->CON.Q + 1; q++) {
+        for (int k = 0; k < this->CON.N - 1; k++) {
+            this->writeBetaOneEntry(k, q);
 
 
         }
     }
 
 }
+
 void solver::writeW() {
     //q=0,1,...,Q;
     for (int q = 0; q < this->CON.Q + 1; q++) {
         double wTmp = 0.0;
-        for (int k = 0; k < this->CON.N / 2-1 ; k++) {
+        for (int k = 0; k < this->CON.N / 2 - 1; k++) {
             wTmp += this->beta[q][k];
         }
         wTmp /= 2 * M_PI;
@@ -519,17 +522,24 @@ void solver::plotW() {
         Qtime.push_back((double) q * this->CON.ds);
     }
     plt::figure();
-    plt::plot(Qtime, this->W,{{"color","black"}});
+    plt::plot(Qtime, this->W, {{"color", "black"}});
 
-    double maxW=*std::max_element(this->W.begin(),this->W.end());
-    double minW=*std::min_element(this->W.begin(),this->W.end());
-    std::vector<int>wticks;
-    for(int i=std::floor(minW);i<std::ceil(maxW);i++){
+    double maxW = *std::max_element(this->W.begin(), this->W.end());
+    double minW = *std::min_element(this->W.begin(), this->W.end());
+    std::vector<int> wticks;
+    for (int i = std::floor(minW); i < std::ceil(maxW); i++) {
         wticks.push_back(i);
     }
-    if(maxW-minW>1) {
+    if (maxW - minW > 1) {
         plt::yticks(wticks);
     }
+    double tTickStep = this->CON.Q * this->CON.ds / this->CON.timeAxisParts;
+    std::vector<double> xTickVals;
+    for (int i = 0; i < this->CON.timeAxisParts + 1; i++) {
+        xTickVals.push_back((double) i * tTickStep);
+    }
+    plt::xticks(xTickVals);
+
 
     plt::xlabel("time");
     plt::ylabel("Winding number");
@@ -545,8 +555,7 @@ void solver::plotW() {
     plt::title(titleStr);
 
 
-
-    std::string outFileName = this->CON.dir+"wn";
+    std::string outFileName = this->CON.dir + "wn";
     std::string paramInOutFileName =
             outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
             + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
@@ -560,7 +569,9 @@ void solver::plotW() {
     plt::save(paramInOutFileName);
     plt::close();
 
+
 }
+
 double solver::xi(const int &k, const int &q) {
     //k=0,1,...,N-1
     //q=0,1,2,...,Q
@@ -571,6 +582,7 @@ double solver::xi(const int &k, const int &q) {
 
 
 }
+
 void solver::writel(const int &q) {
 
     double rst = 0;
@@ -586,6 +598,7 @@ void solver::writel(const int &q) {
     this->rateFunction[q] = rst;
 
 }
+
 void solver::writeRateFuncs() {
     int numPtr = -1;
     do {
@@ -601,6 +614,7 @@ void solver::writeRateFuncs() {
     } while (numPtr < this->CON.Q);
 
 }
+
 void solver::plotRateFunction() {
     this->writeRateFuncs();
     //q=0,1,..,Q;
@@ -610,6 +624,12 @@ void solver::plotRateFunction() {
     }
     plt::figure();
     plt::plot(Qtime, this->rateFunction, {{"color", "black"}});
+    double tTickStep = this->CON.Q * this->CON.ds / this->CON.timeAxisParts;
+    std::vector<double> xTickVals;
+    for (int i = 0; i < this->CON.timeAxisParts + 1; i++) {
+        xTickVals.push_back((double) i * tTickStep);
+    }
+    plt::xticks(xTickVals);
     plt::xlabel("time");
     plt::ylabel("Rate function");
     std::string titleStr = "$\\mu_{0}=$" + boost::lexical_cast<std::string>(this->CON.mu0)
@@ -620,10 +640,10 @@ void solver::plotRateFunction() {
                            + ", $\\Delta_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
                            + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd);
 
-    ;
+
     plt::title(titleStr);
 
-    std::string outFileName = this->CON.dir+"ret";
+    std::string outFileName = this->CON.dir + "ret";
     std::string paramInOutFileName =
             outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
             + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
@@ -639,6 +659,7 @@ void solver::plotRateFunction() {
 
 
 }
+
 void solver::maxW() {
     double tmp = 0;
     size_t numElem = this->W.size();
@@ -662,9 +683,36 @@ void solver::maxW() {
     std::ofstream ofPtr;
     ofPtr.open(summaryOutFileName);
     ofPtr << "Maximum of diff W is " << tmp << std::endl;
-    ofPtr<<"time step is "<<this->CON.dt<<std::endl;
+    ofPtr << "time step is " << this->CON.dt << std::endl;
     ofPtr.close();
 }
+
+void solver::printThetaGTab() {
+    std::string outFileName = this->CON.dir + "G";
+    std::string thetaGOutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".csv";
+
+    std::ofstream ofPtr;
+    ofPtr.open(thetaGOutFileName);
+    for (const auto &vec:this->thetaGTab) {
+        size_t QNum = vec.size();
+        for (auto i = 0; i < QNum - 1; i++) {
+            ofPtr << vec[i].real() << ",";
+        }
+
+        ofPtr << vec[QNum - 1].real() << "\n";
+
+    }
+    ofPtr.close();
+
+}
+
 void solver::runCalc() {
     //0th
     this->writeAllVects();
@@ -687,6 +735,8 @@ void solver::runCalc() {
     //12th
     this->maxW();
 
+    //13th
+    this->printThetaGTab();
 
 
 }

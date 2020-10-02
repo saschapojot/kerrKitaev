@@ -73,6 +73,8 @@ public:
     void plotRateFunction();
     //12th
     void maxW();
+    //13th
+    void printThetaGTab();
     void runCalc();
 
 
