@@ -37,9 +37,10 @@ solver::solver(const CONSTS &conTmp) {
     }
 
     //init beta
-    std::vector<double> b0(this->CON.N - 1, 0.0);
+    std::vector<double> b0(this->CON.N , 0.0);
     for (int q = 0; q < this->CON.Q + 1; q++) {
         this->beta.push_back(b0);
+        this->beta00.push_back(b0);
     }
 
     //init W
@@ -183,7 +184,7 @@ void solver::calulateVec(const int &k) {
         // auto vecNext=this->S4(k,vecCurr,this->CON.dt);
         this->solutionsAll[k][m + 1] = vecNext;
 
-        //solutionAll[k] has Q*R vectors
+        //solutionAll[k] has Q*R+1 vectors
 
     }
 
@@ -208,14 +209,14 @@ void solver::writeAllVects() {
     do {
         std::vector<std::thread> thrdsAll;
         int numPtrTmp = numPtr;
-        for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
+        for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N+1; ki++) {
             thrdsAll.emplace_back(&solver::calulateVec, this, ki);
             numPtr += 1;
         }
         for (auto &th:thrdsAll) {
             th.join();
         }
-    } while (numPtr < this->CON.N - 1);
+    } while (numPtr < this->CON.N );
 
 }
 
@@ -286,21 +287,21 @@ void solver::writeSimpTabOneEntry(const int &k, const int &a) {
 //
 //}
 void solver::writeSimpTabAllEntries() {
-    //k=0,1,...,N-1;
+    //k=0,1,...,N;
     //a=0,1,...,Q-1;
     for (int a = 0; a < this->CON.Q; a++) {
         int numPtr = -1;
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N+1; ki++) {
                 thrds.emplace_back(&solver::writeSimpTabOneEntry, this, ki, a);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N - 1);
+        } while (numPtr < this->CON.N );
     }
 
 
@@ -356,20 +357,20 @@ void solver::writeThetaDTabAllEntries() {
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N+1; ki++) {
                 thrds.emplace_back(&solver::writeThetaDTabOneEntry, this, ki, q);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N - 1);
+        } while (numPtr < this->CON.N);
     }
 
 }
 
 void solver::writeThetaTotTabOneEntry(const int &k, const int &q) {
-    //k=0,1,...,N-1;
+    //k=0,1,...,N;
     //q=0,1,...,Q
     Eigen::Vector2cd vecqR = this->solutionsAll[k][q * this->CON.R];
     Eigen::Vector2cd vec0 = this->solutionsAll[k][0];
@@ -405,14 +406,14 @@ void solver::writeThetaTotTabAllEntries() {
         do {
             std::vector<std::thread> thrds;
             int numPtrTmp = numPtr;
-            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N; ki++) {
+            for (int ki = numPtrTmp + 1; ki < numPtrTmp + this->CON.threadNum + 1 && ki < this->CON.N+1; ki++) {
                 thrds.emplace_back(&solver::writeThetaTotTabOneEntry, this, ki, q);
                 numPtr += 1;
             }
             for (auto &th:thrds) {
                 th.join();
             }
-        } while (numPtr < this->CON.N - 1);
+        } while (numPtr < this->CON.N );
     }
 }
 
@@ -461,12 +462,35 @@ double solver::jumpDecision(const double &incr) {
         return incr;
     }
 }
+double solver::jump(const double &incr, const double &avg) {
+    std::cout<<avg<<std::endl;
+    double cut = 20 * avg;
+    if (incr >= cut) {
+        return incr - 2 * M_PI;
+    } else if (incr <= -cut) {
+        return incr + 2 * M_PI;
+    } else {
+        return incr;
+    }
 
+}
+void solver::jumpAvg() {
+    double tmp=0;
+    for(int k=0;k<this->CON.N;k++){
+        for (int q=0;q<this->CON.Q;q++){
+            tmp+=std::abs(this->beta[q+1][k]-this->beta[q][k]);
+        }
+    }
+    tmp/=(this->CON.Q*this->CON.N);
+    std::cout<<"tmp/pi = "<<tmp/M_PI<<std::endl;
+    this->CON.cutOff=30*tmp/M_PI;
+
+}
 void solver::writeBetaOneEntry(const int &k, const int &q) {
     //q=0,1,...,Q;
-    //k=0,1,...,N-2;
+    //k=0,1,...,N-1;
     double incr = (this->thetaGTab[k + 1][q] - this->thetaGTab[k][q]).real();
-    double bVal = this->jumpDecision(incr);
+    double bVal = incr;//this->jumpDecision(incr);
     this->beta[q][k] = bVal;
 
 
@@ -490,12 +514,21 @@ void solver::writeBetaOneEntry(const int &k, const int &q) {
 //}
 void solver::writeBetaAllEntries() {
     //q=0,1,...,Q;
-    //k=0,1,...,N-2;
+    //k=0,1,...,N-1;
     for (int q = 0; q < this->CON.Q + 1; q++) {
-        for (int k = 0; k < this->CON.N - 1; k++) {
+        for (int k = 0; k < this->CON.N ; k++) {
             this->writeBetaOneEntry(k, q);
 
 
+        }
+    }
+
+}
+void solver::writeBeta00AllEntries() {
+    for(int q=0;q<this->CON.Q+1;q++){
+        for(int k=0;k<this->CON.N;k++){
+            this->beta00[q][k]=this->jumpDecision(this->beta[q][k]);
+                    //this->beta[q][k];this->jumpDecision(this->beta[q][k]);
         }
     }
 
@@ -505,8 +538,8 @@ void solver::writeW() {
     //q=0,1,...,Q;
     for (int q = 0; q < this->CON.Q + 1; q++) {
         double wTmp = 0.0;
-        for (int k = 0; k < this->CON.N / 2 - 1; k++) {
-            wTmp += this->beta[q][k];
+        for (int k = 0; k < this->CON.N/2; k++) {
+            wTmp += this->beta00[q][k];
         }
         wTmp /= 2 * M_PI;
         W[q] = wTmp;
@@ -527,7 +560,7 @@ void solver::plotW() {
     double maxW = *std::max_element(this->W.begin(), this->W.end());
     double minW = *std::min_element(this->W.begin(), this->W.end());
     std::vector<int> wticks;
-    for (int i = std::floor(minW); i < std::ceil(maxW); i++) {
+    for (int i = std::floor(minW); i < std::ceil(maxW) + 1; i++) {
         wticks.push_back(i);
     }
     if (maxW - minW > 1) {
@@ -549,9 +582,10 @@ void solver::plotW() {
                            + ", $\\mu_{1}=$" + boost::lexical_cast<std::string>(this->CON.mu1)
                            + ", $t_{1}=$" + boost::lexical_cast<std::string>(this->CON.t1)
                            + ", $\\Delta_{1}=$" + boost::lexical_cast<std::string>(this->CON.d1)
-                           + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd);
+                           + ", $\\lambda=$" + boost::lexical_cast<std::string>(this->CON.lmd)
+                           + ", $N=$" + boost::lexical_cast<std::string>(this->CON.N);
 
-    ;
+
     plt::title(titleStr);
 
 
@@ -712,7 +746,50 @@ void solver::printThetaGTab() {
     ofPtr.close();
 
 }
+void solver::printThetaDTab() {
+    std::string outFileName = this->CON.dir + "D";
+    std::string thetaDOutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".csv";
 
+    std::ofstream ofPtr;
+    ofPtr.open(thetaDOutFileName);
+    for (const auto &vec:this->thetaDTab) {
+        size_t Qnum = vec.size();
+        for (auto i = 0; i < Qnum - 1; i++) {
+            ofPtr << vec[i].real() << ",";
+        }
+        ofPtr << vec[Qnum - 1].real() << "\n";
+    }
+
+}
+void solver::printBeta00tab() {
+    std::string outFileName = this->CON.dir + "beta00";
+    std::string thetab00OutFileName =
+            outFileName + "mu0" + boost::lexical_cast<std::string>(this->CON.mu0)
+            + "t0" + boost::lexical_cast<std::string>(this->CON.t0)
+            + "d0" + boost::lexical_cast<std::string>(this->CON.d0)
+            + "mu1" + boost::lexical_cast<std::string>(this->CON.mu1)
+            + "t1" + boost::lexical_cast<std::string>(this->CON.t1)
+            + "d1" + boost::lexical_cast<std::string>(this->CON.d1)
+            + "lmd" + boost::lexical_cast<std::string>(this->CON.lmd) + ".csv";
+
+    std::ofstream ofPtr;
+    ofPtr.open(thetab00OutFileName);
+    for(const auto&vec:this->beta00){
+        size_t colN=vec.size();
+        for(auto i=0;i<colN-1;i++){
+            ofPtr<<vec[i]<<",";
+        }
+        ofPtr<<vec[colN-1]<<"\n";
+    }
+    ofPtr.close();
+}
 void solver::runCalc() {
     //0th
     this->writeAllVects();
@@ -726,6 +803,8 @@ void solver::runCalc() {
     this->writeThetaGTabAllEntries();
     //5th
     this->writeBetaAllEntries();
+    //this->jumpAvg();
+    this->writeBeta00AllEntries();
     //6th
     this->writeW();
     //7th
@@ -737,6 +816,8 @@ void solver::runCalc() {
 
     //13th
     this->printThetaGTab();
+    this->printThetaDTab();
+    this->printBeta00tab();
 
 
 }

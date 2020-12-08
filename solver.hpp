@@ -54,9 +54,14 @@ public:
 
     std::complex<double> Jkab(const int&k, const int &a, const int &b);//integrand
     double jumpDecision(const double& incr);
+    double jump(const double& incr,const double& avg);
+
     //5th
+
     void writeBetaOneEntry(const int &k,const int&q);
     void writeBetaAllEntries();
+    void jumpAvg();
+    void writeBeta00AllEntries();
     //6th
     void writeW();
     //7th
@@ -75,6 +80,8 @@ public:
     void maxW();
     //13th
     void printThetaGTab();
+    void printBeta00tab();
+    void printThetaDTab();
     void runCalc();
 
 
@@ -96,8 +103,8 @@ public:
    std::vector<std::vector<std::complex<double>>>thetaDTab;//k=0,1,...,N-1;q=0,1,...,Q;
    std::vector<std::vector<std::complex<double>>> thetaTotTab;//k=0,1,...,N-1;q=0,1,...,Q;
    std::vector<std::vector<std::complex<double>>>thetaGTab;//k=0,1,...,N-1;q=0,1,...,Q;
-
-   std::vector<std::vector<double>> beta;//q=0,1,...,Q;k=0,1,...,N-2;
+    std::vector<std::vector<double>> beta00;
+   std::vector<std::vector<double>> beta;//q=0,1,...,Q;k=0,1,...,N-1;
 
    std::vector<double>W;//q=0,1,...,Q;
    std::vector<double> rateFunction;//q=0,1,...,Q

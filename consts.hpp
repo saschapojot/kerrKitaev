@@ -16,7 +16,7 @@ class CONSTS {
 public:
     CONSTS() {
 
-        for (int i = 0; i < this->N; i++) {
+        for (int i = 0; i < this->N+1; i++) {
             kIndAll.push_back(i);
         }
         /*for (int i = 0; i < this->N / 2; i++) {
@@ -32,7 +32,8 @@ public:
 public:
 
 
-    int N = 500;//fermion number
+
+    int N = 1500;//fermion number
     double Nd = (double) N;//N in double, to facilitate floating point calculation
     double dk = 2 * M_PI / Nd;
 
@@ -52,7 +53,7 @@ public:
     /*
      * Parameters after the quench
      * */
-    double mu1 = 0;
+    double mu1 = -6;
     double t1 = t0;
     double d1 = d0;
 
@@ -68,11 +69,11 @@ public:
 
 
     double tol = 1e-16;
-    double cutOff = 1.2;
+    double cutOff = 1.4;
 
     int threadNum;//= std::thread::hardware_concurrency();
 
-    std::string dir="/home/disk2/Documents/cppCode/kerrKitaev/benchmark/";
+    std::string dir="/home/disk2/Documents/cppCode/kerrKitaev/testkNum6/kNum"+boost::lexical_cast<std::string>(N);
 
     double timeAxisParts=10;
 
